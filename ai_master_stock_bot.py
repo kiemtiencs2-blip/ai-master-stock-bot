@@ -1,11 +1,10 @@
-
 import streamlit as st
 import yfinance as yf
 import pandas as pd
 import numpy as np
 from datetime import datetime
 
-st.set_page_config(page_title="AI MASTER STOCK BOT MAX VIP", page_icon="đŸ‘‘", layout="wide")
+st.set_page_config(page_title="AI MASTER STOCK BOT MAX VIP", page_icon="\U0001f451", layout="wide")
 
 # ---------- Helpers ----------
 def fmt_num(x, decimals=2):
@@ -88,7 +87,7 @@ def technical_score(d):
     score = 50
     reasons = []
     if r.Close > r.EMA20:
-        score += 8; reasons.append("GiĂ¡ trĂªn EMA20")
+        score += 8; reasons.append("Gi\u00e1 tr\u00ean EMA20")
     else:
         score -= 8
     if r.EMA20 > r.EMA50:
@@ -104,13 +103,13 @@ def technical_score(d):
     else:
         score -= 8
     if 50 <= r.RSI <= 68:
-        score += 7; reasons.append("RSI khá»e, chÆ°a quĂ¡ nĂ³ng")
+        score += 7; reasons.append("RSI kh\u1ecfe, ch\u01b0a qu\u00e1 n\u00f3ng")
     elif r.RSI > 75:
-        score -= 7; reasons.append("RSI quĂ¡ cao")
+        score -= 7; reasons.append("RSI qu\u00e1 cao")
     elif r.RSI < 35:
-        score -= 4; reasons.append("RSI yáº¿u/quĂ¡ bĂ¡n")
+        score -= 4; reasons.append("RSI y\u1ebfu/qu\u00e1 b\u00e1n")
     if r.RVOL >= 1.2:
-        score += 6; reasons.append("Volume trĂªn trung bĂ¬nh")
+        score += 6; reasons.append("Volume tr\u00ean trung b\u00ecnh")
     if r.Return20 > 0:
         score += 3
     else:
@@ -146,25 +145,25 @@ def fundamental_score(info):
     fcf = val("freeCashflow")
 
     if rev is not None:
-        if rev > .15: s += 10; positives.append("TÄƒng trÆ°á»Ÿng doanh thu tá»‘t")
-        elif rev < 0: s -= 8; negatives.append("Doanh thu suy giáº£m")
+        if rev > .15: s += 10; positives.append("T\u0103ng tr\u01b0\u1edfng doanh thu t\u1ed1t")
+        elif rev < 0: s -= 8; negatives.append("Doanh thu suy gi\u1ea3m")
     if earn is not None:
-        if earn > .15: s += 10; positives.append("TÄƒng trÆ°á»Ÿng lá»£i nhuáº­n tá»‘t")
-        elif earn < 0: s -= 8; negatives.append("Lá»£i nhuáº­n suy giáº£m")
+        if earn > .15: s += 10; positives.append("T\u0103ng tr\u01b0\u1edfng l\u1ee3i nhu\u1eadn t\u1ed1t")
+        elif earn < 0: s -= 8; negatives.append("L\u1ee3i nhu\u1eadn suy gi\u1ea3m")
     if roe is not None:
-        if roe > .15: s += 7; positives.append("ROE tá»‘t")
+        if roe > .15: s += 7; positives.append("ROE t\u1ed1t")
         elif roe < .05: s -= 5
     if margin is not None:
-        if margin > .15: s += 6; positives.append("BiĂªn lá»£i nhuáº­n tá»‘t")
+        if margin > .15: s += 6; positives.append("Bi\u00ean l\u1ee3i nhu\u1eadn t\u1ed1t")
         elif margin < 0: s -= 7
     if debt is not None:
         if debt < 100: s += 5
-        elif debt > 200: s -= 7; negatives.append("ÄĂ²n báº©y cao")
+        elif debt > 200: s -= 7; negatives.append("\u0110\u00f2n b\u1ea9y cao")
     if pe is not None:
         if 0 < pe < 25: s += 6
-        elif pe > 50: s -= 5; negatives.append("Äá»‹nh giĂ¡ P/E cao")
+        elif pe > 50: s -= 5; negatives.append("\u0110\u1ecbnh gi\u00e1 P/E cao")
     if fcf is not None and fcf > 0:
-        s += 4; positives.append("FCF dÆ°Æ¡ng")
+        s += 4; positives.append("FCF d\u01b0\u01a1ng")
 
     return int(np.clip(s, 0, 100)), positives, negatives
 
@@ -206,10 +205,10 @@ def market_regime():
         except Exception:
             pass
     if result.get("SPY") and result.get("QQQ"):
-        return "RISK-ON đŸŸ¢"
+        return "RISK-ON \U0001f7e2"
     if result.get("SPY") is False and result.get("QQQ") is False:
-        return "RISK-OFF đŸ”´"
-    return "MIXED đŸŸ¡"
+        return "RISK-OFF \U0001f534"
+    return "MIXED \U0001f7e1"
 
 def backtest(d):
     # Simple, transparent strategy: long when close > EMA20 > EMA50 and MACD bullish.
@@ -239,22 +238,22 @@ def backtest(d):
     }
 
 # ---------- UI ----------
-st.title("đŸ‘‘ AI MASTER STOCK BOT â€” MAX VIP FREE")
-st.caption("PhĂ¢n tĂ­ch Ä‘á»‹nh lÆ°á»£ng miá»…n phĂ­ Â· KhĂ´ng API tráº£ phĂ­ Â· KhĂ´ng tá»± Ä‘áº·t lá»‡nh")
+st.title("\U0001f451 AI MASTER STOCK BOT \u2014 MAX VIP FREE")
+st.caption("Ph\u00e2n t\u00edch \u0111\u1ecbnh l\u01b0\u1ee3ng mi\u1ec5n ph\u00ed \u00b7 Kh\u00f4ng API tr\u1ea3 ph\u00ed \u00b7 Kh\u00f4ng t\u1ef1 \u0111\u1eb7t l\u1ec7nh")
 
-symbol = st.text_input("Nháº­p mĂ£ cá»• phiáº¿u", "MU").strip().upper()
-analyze = st.button("đŸ” PHĂ‚N TĂCH MAX VIP", use_container_width=True)
+symbol = st.text_input("Nh\u1eadp m\u00e3 c\u1ed5 phi\u1ebfu", "MU").strip().upper()
+analyze = st.button("\U0001f50d PH\u00c2N T\u00cdCH MAX VIP", use_container_width=True)
 
 if analyze:
     if not symbol:
-        st.error("HĂ£y nháº­p mĂ£ cá»• phiáº¿u.")
+        st.error("H\u00e3y nh\u1eadp m\u00e3 c\u1ed5 phi\u1ebfu.")
         st.stop()
 
-    with st.spinner("Äang láº¥y dá»¯ liá»‡u miá»…n phĂ­ vĂ  tĂ­nh toĂ¡n..."):
+    with st.spinner("\u0110ang l\u1ea5y d\u1eef li\u1ec7u mi\u1ec5n ph\u00ed v\u00e0 t\u00ednh to\u00e1n..."):
         hist, info, news = load_data(symbol)
 
     if hist.empty or len(hist) < 220:
-        st.error("KhĂ´ng Ä‘á»§ dá»¯ liá»‡u lá»‹ch sá»­ cho mĂ£ nĂ y.")
+        st.error("Kh\u00f4ng \u0111\u1ee7 d\u1eef li\u1ec7u l\u1ecbch s\u1eed cho m\u00e3 n\u00e0y.")
         st.stop()
 
     d = indicators(hist)
@@ -279,15 +278,15 @@ if analyze:
     master = int(round(np.clip(master, 0, 100)))
 
     if master >= 82:
-        signal = "đŸŸ¢ STRONG LONG"
+        signal = "\U0001f7e2 STRONG LONG"
     elif master >= 68:
-        signal = "đŸŸ¢ LONG"
+        signal = "\U0001f7e2 LONG"
     elif master >= 45:
-        signal = "đŸŸ¡ NEUTRAL"
+        signal = "\U0001f7e1 NEUTRAL"
     elif master >= 30:
-        signal = "đŸ”´ SHORT"
+        signal = "\U0001f534 SHORT"
     else:
-        signal = "đŸ”´ STRONG SHORT"
+        signal = "\U0001f534 STRONG SHORT"
 
     confidence = int(np.clip(50 + abs(master - 50) * 0.85, 50, 92))
 
@@ -311,9 +310,9 @@ if analyze:
         sl = tp1 = tp2 = np.nan
         rr = np.nan
 
-    st.subheader(f"{symbol} â€” {signal}")
+    st.subheader(f"{symbol} \u2014 {signal}")
     a, b, c = st.columns(3)
-    a.metric("GiĂ¡", f"${price:,.2f}")
+    a.metric("Gi\u00e1", f"${price:,.2f}")
     b.metric("MAX SCORE", f"{master}/100")
     c.metric("Confidence", f"{confidence}%")
 
@@ -326,18 +325,18 @@ if analyze:
     ):
         col.metric(name, f"{value}/100")
 
-    st.subheader("đŸ¯ Trade Setup")
+    st.subheader("\U0001f3af Trade Setup")
     if not np.isnan(sl):
         c1,c2,c3,c4,c5 = st.columns(5)
-        c1.metric("Entry zone", f"${entry_low:,.2f}â€“${entry_high:,.2f}")
+        c1.metric("Entry zone", f"${entry_low:,.2f}\u2013${entry_high:,.2f}")
         c2.metric("Stop Loss", f"${sl:,.2f}")
         c3.metric("TP1", f"${tp1:,.2f}")
         c4.metric("TP2", f"${tp2:,.2f}")
         c5.metric("R/R", f"1 : {rr:.1f}")
     else:
-        st.info("TĂ­n hiá»‡u NEUTRAL: chÆ°a cĂ³ setup Long/Short Ä‘á»§ rĂµ.")
+        st.info("T\u00edn hi\u1ec7u NEUTRAL: ch\u01b0a c\u00f3 setup Long/Short \u0111\u1ee7 r\u00f5.")
 
-    st.subheader("đŸ“ Technical")
+    st.subheader("\U0001f4ca Technical")
     st.dataframe(
         pd.DataFrame({
             "Metric": ["RSI","MACD","EMA20","EMA50","EMA200","ATR14","RVOL","20D Return","60D Return"],
@@ -350,38 +349,38 @@ if analyze:
         hide_index=True, use_container_width=True
     )
 
-    st.subheader("đŸŒ Market Regime")
+    st.subheader("\U0001f30e Market Regime")
     st.write(regime)
 
-    st.subheader("đŸ‚ Bull Case")
+    st.subheader("\U0001f402 Bull Case")
     for x in reasons + positives:
-        st.write("â€¢ " + x)
+        st.write("\u2022 " + x)
     if not reasons and not positives:
-        st.write("â€¢ ChÆ°a cĂ³ Ä‘á»§ dá»¯ liá»‡u tĂ­ch cá»±c.")
+        st.write("\u2022 Ch\u01b0a c\u00f3 \u0111\u1ee7 d\u1eef li\u1ec7u t\u00edch c\u1ef1c.")
 
-    st.subheader("đŸ» Bear / Risk Case")
+    st.subheader("\U0001f43b Bear / Risk Case")
     for x in negatives:
-        st.write("â€¢ " + x)
+        st.write("\u2022 " + x)
     if r.RSI > 70:
-        st.write("â€¢ RSI cao: rá»§i ro mua Ä‘uá»•i.")
+        st.write("\u2022 RSI cao: r\u1ee7i ro mua \u0111u\u1ed5i.")
     if r.ATR14 / price > .04:
-        st.write("â€¢ Biáº¿n Ä‘á»™ng cao theo ATR.")
+        st.write("\u2022 Bi\u1ebfn \u0111\u1ed9ng cao theo ATR.")
     if not negatives and r.RSI <= 70:
-        st.write("â€¢ ChÆ°a phĂ¡t hiá»‡n rá»§i ro Ä‘á»‹nh lÆ°á»£ng ná»•i báº­t tá»« dá»¯ liá»‡u cĂ³ sáºµn.")
+        st.write("\u2022 Ch\u01b0a ph\u00e1t hi\u1ec7n r\u1ee7i ro \u0111\u1ecbnh l\u01b0\u1ee3ng n\u1ed5i b\u1eadt t\u1eeb d\u1eef li\u1ec7u c\u00f3 s\u1eb5n.")
 
-    st.subheader("đŸ§ª Backtest nhanh")
+    st.subheader("\U0001f9ea Backtest nhanh")
     bt = backtest(d)
     if bt:
         q1,q2,q3,q4 = st.columns(4)
         q1.metric("Trades", bt["trades"])
         q2.metric("Win rate", f"{bt['winrate']:.1f}%")
-        q3.metric("Profit factor", f"{bt['profit_factor']:.2f}" if np.isfinite(bt["profit_factor"]) else "âˆ")
+        q3.metric("Profit factor", f"{bt['profit_factor']:.2f}" if np.isfinite(bt["profit_factor"]) else "\u221e")
         q4.metric("Max drawdown", f"{bt['max_drawdown']:.1f}%")
-        st.caption("Backtest Ä‘Æ¡n giáº£n, khĂ´ng bao gá»“m phĂ­ giao dá»‹ch, trÆ°á»£t giĂ¡ hoáº·c thuáº¿. KhĂ´ng dĂ¹ng káº¿t quáº£ lá»‹ch sá»­ nhÆ° cam káº¿t lá»£i nhuáº­n tÆ°Æ¡ng lai.")
+        st.caption("Backtest \u0111\u01a1n gi\u1ea3n, kh\u00f4ng bao g\u1ed3m ph\u00ed giao d\u1ecbch, tr\u01b0\u1ee3t gi\u00e1 ho\u1eb7c thu\u1ebf. Kh\u00f4ng d\u00f9ng k\u1ebft qu\u1ea3 l\u1ecbch s\u1eed nh\u01b0 cam k\u1ebft l\u1ee3i nhu\u1eadn t\u01b0\u01a1ng lai.")
     else:
-        st.info("KhĂ´ng Ä‘á»§ tĂ­n hiá»‡u Ä‘á»ƒ backtest.")
+        st.info("Kh\u00f4ng \u0111\u1ee7 t\u00edn hi\u1ec7u \u0111\u1ec3 backtest.")
 
-    st.subheader("đŸ“° News")
+    st.subheader("\U0001f4f0 News")
     if news:
         shown = 0
         for item in news[:8]:
@@ -395,10 +394,10 @@ if analyze:
                 else:
                     st.write("- " + title)
         if shown == 0:
-            st.caption("Nguá»“n tin khĂ´ng tráº£ vá» tiĂªu Ä‘á» theo Ä‘á»‹nh dáº¡ng hiá»‡n táº¡i.")
+            st.caption("Ngu\u1ed3n tin kh\u00f4ng tr\u1ea3 v\u1ec1 ti\u00eau \u0111\u1ec1 theo \u0111\u1ecbnh d\u1ea1ng hi\u1ec7n t\u1ea1i.")
     else:
-        st.caption("KhĂ´ng láº¥y Ä‘Æ°á»£c news tá»« nguá»“n miá»…n phĂ­ á»Ÿ thá»i Ä‘iá»ƒm nĂ y.")
+        st.caption("Kh\u00f4ng l\u1ea5y \u0111\u01b0\u1ee3c news t\u1eeb ngu\u1ed3n mi\u1ec5n ph\u00ed \u1edf th\u1eddi \u0111i\u1ec3m n\u00e0y.")
 
-    st.warning("ÄĂ¢y lĂ  cĂ´ng cá»¥ nghiĂªn cá»©u, khĂ´ng pháº£i lá»i khuyĂªn Ä‘áº§u tÆ°. Dá»¯ liá»‡u miá»…n phĂ­ cĂ³ thá»ƒ cháº­m, thiáº¿u hoáº·c bá»‹ giá»›i háº¡n bá»Ÿi nhĂ  cung cáº¥p.")
+    st.warning("\u0110\u00e2y l\u00e0 c\u00f4ng c\u1ee5 nghi\u00ean c\u1ee9u, kh\u00f4ng ph\u1ea3i l\u1eddi khuy\u00ean \u0111\u1ea7u t\u01b0. D\u1eef li\u1ec7u mi\u1ec5n ph\u00ed c\u00f3 th\u1ec3 ch\u1eadm, thi\u1ebfu ho\u1eb7c b\u1ecb gi\u1edbi h\u1ea1n b\u1edfi nh\u00e0 cung c\u1ea5p.")
 else:
-    st.info("Nháº­p mĂ£ cá»• phiáº¿u rá»“i báº¥m **đŸ” PHĂ‚N TĂCH MAX VIP**.")
+    st.info("Nh\u1eadp m\u00e3 c\u1ed5 phi\u1ebfu r\u1ed3i b\u1ea5m **\U0001f50d PH\u00c2N T\u00cdCH MAX VIP**.")
