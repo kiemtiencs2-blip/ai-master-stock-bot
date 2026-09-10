@@ -5,7 +5,7 @@ import numpy as np
 
 st.set_page_config(
     page_title="AI MASTER STOCK BOT MAX VIP FREE",
-    page_icon="đŸ“",
+    page_icon="\U0001f4ca",
     layout="wide"
 )
 
@@ -222,11 +222,11 @@ def calculate_master(technical, fundamental, momentum, valuation, macro, risk, r
     master = clamp(raw)
 
     if master >= 70:
-        bias = "đŸŸ¢ LONG"
+        bias = "\U0001f7e2 LONG"
     elif master <= 40:
-        bias = "đŸ”´ SHORT"
+        bias = "\U0001f534 SHORT"
     else:
-        bias = "đŸŸ¡ NEUTRAL"
+        bias = "\U0001f7e1 NEUTRAL"
     return master, bias
 
 def confidence_score(master, technical, fundamental, momentum, macro, risk, regime):
@@ -316,14 +316,14 @@ def backtest(hist):
         "max_drawdown": abs(drawdown.min())
     }
 
-st.title("đŸ“ AI MASTER STOCK BOT â€” MAX VIP FREE")
-st.caption("Technical + Fundamental + Momentum + Valuation + Macro + Risk â€¢ KhĂ´ng tá»± Ä‘áº·t lá»‡nh â€¢ KhĂ´ng cáº§n API tráº£ phĂ­")
+st.title("\U0001f4ca AI MASTER STOCK BOT \u2014 MAX VIP FREE")
+st.caption("Technical + Fundamental + Momentum + Valuation + Macro + Risk \u2022 Kh\u00f4ng t\u1ef1 \u0111\u1eb7t l\u1ec7nh \u2022 Kh\u00f4ng c\u1ea7n API tr\u1ea3 ph\u00ed")
 
-ticker = st.text_input("Nháº­p mĂ£ cá»• phiáº¿u", "MU").upper().strip()
+ticker = st.text_input("Nh\u1eadp m\u00e3 c\u1ed5 phi\u1ebfu", "MU").upper().strip()
 
-if st.button("đŸ” PHĂ‚N TĂCH MAX VIP", use_container_width=True):
+if st.button("\U0001f50e PH\u00c2N T\u00cdCH MAX VIP", use_container_width=True):
     if not ticker:
-        st.warning("Nháº­p mĂ£ cá»• phiáº¿u trÆ°á»›c.")
+        st.warning("Nh\u1eadp m\u00e3 c\u1ed5 phi\u1ebfu tr\u01b0\u1edbc.")
         st.stop()
 
     try:
@@ -332,7 +332,7 @@ if st.button("đŸ” PHĂ‚N TĂCH MAX VIP", use_container_width=True):
         hist = stock.history(period="2y", auto_adjust=False)
 
         if hist.empty or len(hist) < 100:
-            st.error("KhĂ´ng Ä‘á»§ dá»¯ liá»‡u cho mĂ£ nĂ y.")
+            st.error("Kh\u00f4ng \u0111\u1ee7 d\u1eef li\u1ec7u cho m\u00e3 n\u00e0y.")
             st.stop()
 
         ind = calculate_indicators(hist)
@@ -354,10 +354,10 @@ if st.button("đŸ” PHĂ‚N TĂCH MAX VIP", use_container_width=True):
 
         entry_low, entry_high, stop, tp1, tp2 = trade_setup(ind, bias)
 
-        st.subheader(f"{ticker} â€” {bias}")
+        st.subheader(f"{ticker} \u2014 {bias}")
 
         c1, c2, c3, c4 = st.columns(4)
-        c1.metric("GiĂ¡", f"${ind['price']:.2f}")
+        c1.metric("Gi\u00e1", f"${ind['price']:.2f}")
         c2.metric("MAX SCORE", f"{master}/100")
         c3.metric("Confidence", f"{confidence}%")
         c4.metric("Market", regime)
@@ -371,23 +371,23 @@ if st.button("đŸ” PHĂ‚N TĂCH MAX VIP", use_container_width=True):
         cols[5].metric("Risk", f"{risk}/100")
 
         if regime == "RISK-OFF":
-            st.warning("â ï¸ THá» TRÆ¯á»œNG ÄANG RISK-OFF â€” tĂ­n hiá»‡u LONG cáº§n tháº­n trá»ng.")
+            st.warning("\u26a0\ufe0f TH\u1eca TR\u01af\u1edcNG \u0110ANG RISK-OFF \u2014 t\u00edn hi\u1ec7u LONG c\u1ea7n th\u1eadn tr\u1ecdng.")
         if macro < 40:
-            st.warning("â ï¸ Macro tháº¥p â€” bá»‘i cáº£nh thá»‹ trÆ°á»ng khĂ´ng thuáº­n lá»£i.")
+            st.warning("\u26a0\ufe0f Macro th\u1ea5p \u2014 b\u1ed1i c\u1ea3nh th\u1ecb tr\u01b0\u1eddng kh\u00f4ng thu\u1eadn l\u1ee3i.")
         if risk >= 70:
-            st.error("đŸ”´ Risk cao â€” biáº¿n Ä‘á»™ng lá»›n.")
+            st.error("\U0001f534 Risk cao \u2014 bi\u1ebfn \u0111\u1ed9ng l\u1edbn.")
         if confidence < 60:
-            st.info("â„¹ï¸ Confidence chÆ°a cao â€” nĂªn chá» thĂªm xĂ¡c nháº­n.")
+            st.info("\u2139\ufe0f Confidence ch\u01b0a cao \u2014 n\u00ean ch\u1edd th\u00eam x\u00e1c nh\u1eadn.")
 
-        st.subheader("đŸ¯ Trade Setup")
+        st.subheader("\U0001f3af Trade Setup")
         t1, t2, t3, t4, t5 = st.columns(5)
-        t1.metric("Entry zone", f"${entry_low:.2f} â€“ ${entry_high:.2f}")
+        t1.metric("Entry zone", f"${entry_low:.2f} \u2013 ${entry_high:.2f}")
         t2.metric("Stop Loss", fmt(stop))
         t3.metric("TP1", fmt(tp1))
         t4.metric("TP2", fmt(tp2))
         t5.metric("R/R", "1 : 1.5 / 2.0" if "NEUTRAL" not in bias else "N/A")
 
-        st.subheader("đŸ“ˆ Technical")
+        st.subheader("\U0001f4c8 Technical")
         technical_df = pd.DataFrame([
             ["RSI", fmt(ind["rsi"])],
             ["MACD", fmt(ind["macd"])],
@@ -401,38 +401,38 @@ if st.button("đŸ” PHĂ‚N TĂCH MAX VIP", use_container_width=True):
         ], columns=["Metric", "Value"])
         st.dataframe(technical_df, use_container_width=True, hide_index=True)
 
-        st.subheader("đŸŒ Market Regime")
+        st.subheader("\U0001f30d Market Regime")
         if regime == "RISK-ON":
-            st.success(f"đŸŸ¢ RISK-ON â€” Market Score {regime_score}/100")
+            st.success(f"\U0001f7e2 RISK-ON \u2014 Market Score {regime_score}/100")
         elif regime == "RISK-OFF":
-            st.error(f"đŸ”´ RISK-OFF â€” Market Score {regime_score}/100")
+            st.error(f"\U0001f534 RISK-OFF \u2014 Market Score {regime_score}/100")
         else:
-            st.info(f"đŸŸ¡ NEUTRAL â€” Market Score {regime_score}/100")
+            st.info(f"\U0001f7e1 NEUTRAL \u2014 Market Score {regime_score}/100")
 
-        st.subheader("đŸ‚ Bull Case")
+        st.subheader("\U0001f402 Bull Case")
         bull_points = []
-        if ind["price"] > ind["ema20"]: bull_points.append("GiĂ¡ trĂªn EMA20")
+        if ind["price"] > ind["ema20"]: bull_points.append("Gi\u00e1 tr\u00ean EMA20")
         if ind["ema20"] > ind["ema50"]: bull_points.append("EMA20 > EMA50")
         if ind["ema50"] > ind["ema200"]: bull_points.append("EMA50 > EMA200")
         if ind["macd_bull"]: bull_points.append("MACD bullish")
-        if 50 <= ind["rsi"] < 70: bull_points.append("RSI khá»e, chÆ°a quĂ¡ nĂ³ng")
-        if fundamental >= 65: bull_points.append("Fundamental tá»‘t")
-        if momentum >= 60: bull_points.append("Momentum tĂ­ch cá»±c")
-        if not bull_points: bull_points.append("ChÆ°a cĂ³ nhiá»u yáº¿u tá»‘ há»— trá»£.")
-        for x in bull_points: st.write(f"â€¢ {x}")
+        if 50 <= ind["rsi"] < 70: bull_points.append("RSI kh\u1ecfe, ch\u01b0a qu\u00e1 n\u00f3ng")
+        if fundamental >= 65: bull_points.append("Fundamental t\u1ed1t")
+        if momentum >= 60: bull_points.append("Momentum t\u00edch c\u1ef1c")
+        if not bull_points: bull_points.append("Ch\u01b0a c\u00f3 nhi\u1ec1u y\u1ebfu t\u1ed1 h\u1ed7 tr\u1ee3.")
+        for x in bull_points: st.write(f"\u2022 {x}")
 
-        st.subheader("đŸ» Bear / Risk Case")
+        st.subheader("\U0001f43b Bear / Risk Case")
         bear_points = []
-        if regime == "RISK-OFF": bear_points.append("Thá»‹ trÆ°á»ng chung Ä‘ang RISK-OFF")
-        if macro < 40: bear_points.append("Macro Score tháº¥p")
-        if risk >= 70: bear_points.append("Biáº¿n Ä‘á»™ng cao")
-        if not np.isnan(ind["return20"]) and ind["return20"] < 0: bear_points.append("20D Return Ă¢m")
-        if not np.isnan(ind["return60"]) and ind["return60"] < 0: bear_points.append("60D Return Ă¢m")
-        if momentum < 45: bear_points.append("Momentum yáº¿u")
-        if not bear_points: bear_points.append("ChÆ°a phĂ¡t hiá»‡n rá»§i ro Ä‘á»‹nh lÆ°á»£ng lá»›n tá»« dá»¯ liá»‡u hiá»‡n cĂ³.")
-        for x in bear_points: st.write(f"â€¢ {x}")
+        if regime == "RISK-OFF": bear_points.append("Th\u1ecb tr\u01b0\u1eddng chung \u0111ang RISK-OFF")
+        if macro < 40: bear_points.append("Macro Score th\u1ea5p")
+        if risk >= 70: bear_points.append("Bi\u1ebfn \u0111\u1ed9ng cao")
+        if not np.isnan(ind["return20"]) and ind["return20"] < 0: bear_points.append("20D Return \u00e2m")
+        if not np.isnan(ind["return60"]) and ind["return60"] < 0: bear_points.append("60D Return \u00e2m")
+        if momentum < 45: bear_points.append("Momentum y\u1ebfu")
+        if not bear_points: bear_points.append("Ch\u01b0a ph\u00e1t hi\u1ec7n r\u1ee7i ro \u0111\u1ecbnh l\u01b0\u1ee3ng l\u1edbn t\u1eeb d\u1eef li\u1ec7u hi\u1ec7n c\u00f3.")
+        for x in bear_points: st.write(f"\u2022 {x}")
 
-        st.subheader("đŸ’° Fundamental")
+        st.subheader("\U0001f4b0 Fundamental")
         fundamental_df = pd.DataFrame([
             ["Revenue growth", pct(fund["revenue_growth"])],
             ["EPS/Earnings growth", pct(fund["earnings_growth"])],
@@ -448,7 +448,7 @@ if st.button("đŸ” PHĂ‚N TĂCH MAX VIP", use_container_width=True):
         ], columns=["Metric", "Value"])
         st.dataframe(fundamental_df, use_container_width=True, hide_index=True)
 
-        st.subheader("đŸ§ª Backtest nhanh")
+        st.subheader("\U0001f9ea Backtest nhanh")
         result = backtest(hist)
         if result:
             b1, b2, b3, b4 = st.columns(4)
@@ -456,22 +456,22 @@ if st.button("đŸ” PHĂ‚N TĂCH MAX VIP", use_container_width=True):
             b2.metric("Win rate", f"{result['win_rate'] * 100:.1f}%")
             b3.metric("Profit factor", fmt(result["profit_factor"]))
             b4.metric("Max drawdown", f"{result['max_drawdown'] * 100:.1f}%")
-            st.caption("Backtest 5 ngĂ y, chÆ°a bao gá»“m phĂ­, spread, slippage vĂ  thuáº¿. Káº¿t quáº£ quĂ¡ khá»© khĂ´ng Ä‘áº£m báº£o lá»£i nhuáº­n tÆ°Æ¡ng lai.")
+            st.caption("Backtest 5 ng\u00e0y, ch\u01b0a bao g\u1ed3m ph\u00ed, spread, slippage v\u00e0 thu\u1ebf. K\u1ebft qu\u1ea3 qu\u00e1 kh\u1ee9 kh\u00f4ng \u0111\u1ea3m b\u1ea3o l\u1ee3i nhu\u1eadn t\u01b0\u01a1ng lai.")
         else:
-            st.info("KhĂ´ng Ä‘á»§ dá»¯ liá»‡u Ä‘á»ƒ cháº¡y backtest.")
+            st.info("Kh\u00f4ng \u0111\u1ee7 d\u1eef li\u1ec7u \u0111\u1ec3 ch\u1ea1y backtest.")
 
-        st.subheader("đŸ§  MAX VIP Verdict")
+        st.subheader("\U0001f9e0 MAX VIP Verdict")
         if "LONG" in bias:
             if regime == "RISK-OFF" or macro < 40:
-                st.warning(f"đŸŸ¢ LONG nhÆ°ng rá»§i ro cao â€” MAX {master}/100 â€¢ Confidence {confidence}%.")
+                st.warning(f"\U0001f7e2 LONG nh\u01b0ng r\u1ee7i ro cao \u2014 MAX {master}/100 \u2022 Confidence {confidence}%.")
             else:
-                st.success(f"đŸŸ¢ LONG â€” MAX {master}/100 â€¢ Confidence {confidence}%.")
+                st.success(f"\U0001f7e2 LONG \u2014 MAX {master}/100 \u2022 Confidence {confidence}%.")
         elif "SHORT" in bias:
-            st.error(f"đŸ”´ SHORT â€” MAX {master}/100 â€¢ Confidence {confidence}%.")
+            st.error(f"\U0001f534 SHORT \u2014 MAX {master}/100 \u2022 Confidence {confidence}%.")
         else:
-            st.info(f"đŸŸ¡ NEUTRAL â€” MAX {master}/100 â€¢ Confidence {confidence}%.")
+            st.info(f"\U0001f7e1 NEUTRAL \u2014 MAX {master}/100 \u2022 Confidence {confidence}%.")
 
-        st.info("Bot chá»‰ phĂ¢n tĂ­ch dá»¯ liá»‡u. KhĂ´ng tá»± mua, bĂ¡n hoáº·c Ä‘áº·t lá»‡nh.")
+        st.info("Bot ch\u1ec9 ph\u00e2n t\u00edch d\u1eef li\u1ec7u. Kh\u00f4ng t\u1ef1 mua, b\u00e1n ho\u1eb7c \u0111\u1eb7t l\u1ec7nh.")
 
     except Exception as e:
-        st.error(f"Lá»—i khi phĂ¢n tĂ­ch {ticker}: {e}")
+        st.error(f"L\u1ed7i khi ph\u00e2n t\u00edch {ticker}: {e}")
