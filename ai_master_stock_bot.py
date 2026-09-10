@@ -3,475 +3,430 @@ import yfinance as yf
 import pandas as pd
 import numpy as np
 
-st.set_page_config(
-    page_title="AI MASTER STOCK BOT MAX VIP FREE",
-    page_icon="\U0001f4ca",
-    layout="wide"
-)
+st.set_page_config(page_title="AI MASTER STOCK BOT â€” MAX VIP FREE", page_icon="đŸ“", layout="wide")
 
-def safe_float(x, default=np.nan):
+# ============================================================
+# MAX VIP FREE V2 â€” free data only, no broker/API trading
+# ============================================================
+
+def sf(x, default=np.nan):
     try:
         if x is None:
             return default
         x = float(x)
-        if np.isnan(x) or np.isfinite(x) is False:
-            return default
-        return x
+        return default if not np.isfinite(x) else x
     except Exception:
         return default
 
-def fmt(x, decimals=2):
-    x = safe_float(x)
-    return "N/A" if np.isnan(x) else f"{x:.{decimals}f}"
+
+def fmt(x, d=2):
+    x = sf(x)
+    return "N/A" if np.isnan(x) else f"{x:.{d}f}"
+
 
 def pct(x):
-    x = safe_float(x)
+    x = sf(x)
     return "N/A" if np.isnan(x) else f"{x * 100:.1f}%"
 
-def clamp(x, low=0, high=100):
-    return int(np.clip(round(x), low, high))
 
-def calculate_indicators(hist):
+def clamp(x, lo=0, hi=100):
+    return int(np.clip(round(sf(x, 50)), lo, hi))
+
+
+def rsi_series(close, n=14):
+    delta = close.diff()
+    gain = delta.clip(lower=0).ewm(alpha=1/n, adjust=False).mean()
+    loss = (-delta.clip(upper=0)).ewm(alpha=1/n, adjust=False).mean()
+    rs = gain / loss.replace(0, np.nan)
+    return 100 - 100 / (1 + rs)
+
+
+def atr_series(hist, n=14):
     close = hist["Close"].astype(float)
+    high = hist["High"].astype(float)
+    low = hist["Low"].astype(float)
+    tr = pd.concat([high-low, (high-close.shift()).abs(), (low-close.shift()).abs()], axis=1).max(axis=1)
+    return tr.ewm(alpha=1/n, adjust=False).mean()
+
+
+def adx_series(hist, n=14):
+    high = hist["High"].astype(float)
+    low = hist["Low"].astype(float)
+    close = hist["Close"].astype(float)
+    up = high.diff()
+    down = -low.diff()
+    plus_dm = pd.Series(np.where((up > down) & (up > 0), up, 0.0), index=hist.index)
+    minus_dm = pd.Series(np.where((down > up) & (down > 0), down, 0.0), index=hist.index)
+    tr = pd.concat([high-low, (high-close.shift()).abs(), (low-close.shift()).abs()], axis=1).max(axis=1)
+    atr = tr.ewm(alpha=1/n, adjust=False).mean()
+    plus_di = 100 * plus_dm.ewm(alpha=1/n, adjust=False).mean() / atr.replace(0, np.nan)
+    minus_di = 100 * minus_dm.ewm(alpha=1/n, adjust=False).mean() / atr.replace(0, np.nan)
+    dx = 100 * (plus_di-minus_di).abs() / (plus_di+minus_di).replace(0, np.nan)
+    return dx.ewm(alpha=1/n, adjust=False).mean(), plus_di, minus_di
+
+
+def indicators(hist):
+    close = hist["Close"].astype(float)
+    volume = hist["Volume"].astype(float)
     ema20 = close.ewm(span=20, adjust=False).mean()
     ema50 = close.ewm(span=50, adjust=False).mean()
     ema200 = close.ewm(span=200, adjust=False).mean()
-
-    delta = close.diff()
-    gain = delta.clip(lower=0).rolling(14).mean()
-    loss = (-delta.clip(upper=0)).rolling(14).mean()
-    rs = gain / loss.replace(0, np.nan)
-    rsi = 100 - (100 / (1 + rs))
-
+    rsi = rsi_series(close)
     macd_fast = close.ewm(span=12, adjust=False).mean()
     macd_slow = close.ewm(span=26, adjust=False).mean()
     macd = macd_fast - macd_slow
     signal = macd.ewm(span=9, adjust=False).mean()
+    atr = atr_series(hist)
+    adx, plus_di, minus_di = adx_series(hist)
+    avg_vol = volume.rolling(20).mean()
+    sma20_vol = avg_vol
+    high20 = hist["High"].rolling(20).max()
+    low20 = hist["Low"].rolling(20).min()
+    price = close.iloc[-1]
 
-    high = hist["High"].astype(float)
-    low = hist["Low"].astype(float)
-    tr = pd.concat(
-        [high - low, abs(high - close.shift()), abs(low - close.shift())],
-        axis=1
-    ).max(axis=1)
-    atr14 = tr.rolling(14).mean()
-
-    volume = hist["Volume"].astype(float)
-    avg_volume = volume.rolling(20).mean()
+    # Trend slope normalized by price; useful to avoid giving 100/100 only from EMA ordering.
+    slope20 = (ema20.iloc[-1] - ema20.iloc[-6]) / price if len(close) > 6 else np.nan
+    slope50 = (ema50.iloc[-1] - ema50.iloc[-11]) / price if len(close) > 11 else np.nan
 
     return {
-        "price": close.iloc[-1],
-        "ema20": ema20.iloc[-1],
-        "ema50": ema50.iloc[-1],
-        "ema200": ema200.iloc[-1],
-        "rsi": rsi.iloc[-1],
-        "macd": macd.iloc[-1],
-        "signal": signal.iloc[-1],
+        "price": price,
+        "ema20": ema20.iloc[-1], "ema50": ema50.iloc[-1], "ema200": ema200.iloc[-1],
+        "rsi": rsi.iloc[-1], "macd": macd.iloc[-1], "signal": signal.iloc[-1],
         "macd_bull": macd.iloc[-1] > signal.iloc[-1],
-        "atr": atr14.iloc[-1],
-        "rvol": volume.iloc[-1] / avg_volume.iloc[-1] if avg_volume.iloc[-1] else np.nan,
+        "atr": atr.iloc[-1], "atr_pct": atr.iloc[-1] / price if price else np.nan,
+        "rvol": volume.iloc[-1] / sma20_vol.iloc[-1] if sma20_vol.iloc[-1] else np.nan,
+        "adx": adx.iloc[-1], "plus_di": plus_di.iloc[-1], "minus_di": minus_di.iloc[-1],
+        "slope20": slope20, "slope50": slope50,
         "return20": close.iloc[-1] / close.iloc[-21] - 1 if len(close) > 21 else np.nan,
         "return60": close.iloc[-1] / close.iloc[-61] - 1 if len(close) > 61 else np.nan,
+        "range20_pos": (price-low20.iloc[-1])/(high20.iloc[-1]-low20.iloc[-1]) if high20.iloc[-1] > low20.iloc[-1] else .5,
     }
+
 
 def technical_score(ind):
-    score = 50
-    score += 10 if ind["price"] > ind["ema20"] else -10
-    score += 10 if ind["ema20"] > ind["ema50"] else -10
-    score += 10 if ind["ema50"] > ind["ema200"] else -10
-    score += 10 if ind["macd_bull"] else -10
-
+    # 8 independent-ish signals, each +/- 6 to 10. Avoids the old automatic 100/100 problem.
+    s = 50
+    s += 8 if ind["price"] > ind["ema20"] else -8
+    s += 8 if ind["ema20"] > ind["ema50"] else -8
+    s += 8 if ind["ema50"] > ind["ema200"] else -8
+    s += 8 if ind["macd_bull"] else -8
     rsi = ind["rsi"]
-    if 50 <= rsi < 70:
-        score += 10
-    elif rsi < 30:
-        score += 5
+    if 52 <= rsi <= 68: s += 8
+    elif 45 <= rsi < 52 or 68 < rsi <= 75: s += 3
+    elif rsi < 30: s += 1
+    else: s -= 6
+    adx = ind["adx"]
+    if adx >= 25: s += 8 if ind["plus_di"] > ind["minus_di"] else -8
+    elif adx >= 18: s += 3 if ind["plus_di"] > ind["minus_di"] else -3
+    if ind["slope20"] > 0: s += 5
+    else: s -= 5
+    if ind["rvol"] >= 1.2: s += 5 if ind["price"] > ind["ema20"] else -5
+    return clamp(s)
 
-    return clamp(score)
 
-def get_fundamentals(info):
-    vals = {
-        "revenue_growth": safe_float(info.get("revenueGrowth")),
-        "earnings_growth": safe_float(info.get("earningsGrowth")),
-        "roe": safe_float(info.get("returnOnEquity")),
-        "profit_margin": safe_float(info.get("profitMargins")),
-        "operating_margin": safe_float(info.get("operatingMargins")),
-        "debt_equity": safe_float(info.get("debtToEquity")),
-        "current_ratio": safe_float(info.get("currentRatio")),
-        "forward_pe": safe_float(info.get("forwardPE")),
-        "trailing_pe": safe_float(info.get("trailingPE")),
-        "peg": safe_float(info.get("pegRatio")),
-        "free_cash_flow": safe_float(info.get("freeCashflow")),
+def fundamentals(info):
+    v = {
+        "revenue_growth": sf(info.get("revenueGrowth")),
+        "earnings_growth": sf(info.get("earningsGrowth")),
+        "roe": sf(info.get("returnOnEquity")),
+        "profit_margin": sf(info.get("profitMargins")),
+        "operating_margin": sf(info.get("operatingMargins")),
+        "debt_equity": sf(info.get("debtToEquity")),
+        "current_ratio": sf(info.get("currentRatio")),
+        "forward_pe": sf(info.get("forwardPE")),
+        "trailing_pe": sf(info.get("trailingPE")),
+        "peg": sf(info.get("pegRatio")),
+        "free_cash_flow": sf(info.get("freeCashflow")),
     }
+    s = 50
+    if not np.isnan(v["revenue_growth"]): s += 10 if v["revenue_growth"] > .10 else (4 if v["revenue_growth"] > 0 else -8)
+    if not np.isnan(v["earnings_growth"]): s += 10 if v["earnings_growth"] > .10 else (4 if v["earnings_growth"] > 0 else -8)
+    if not np.isnan(v["roe"]): s += 8 if v["roe"] > .15 else (3 if v["roe"] > 0 else -5)
+    if not np.isnan(v["profit_margin"]): s += 5 if v["profit_margin"] > .10 else (2 if v["profit_margin"] > 0 else -5)
+    if not np.isnan(v["operating_margin"]): s += 5 if v["operating_margin"] > .10 else (2 if v["operating_margin"] > 0 else -5)
+    if not np.isnan(v["free_cash_flow"]): s += 8 if v["free_cash_flow"] > 0 else -8
+    if not np.isnan(v["debt_equity"]): s += 5 if v["debt_equity"] < 100 else -7
+    if not np.isnan(v["current_ratio"]): s += 5 if v["current_ratio"] > 1.2 else (-4 if v["current_ratio"] < 1 else 0)
+    return v, clamp(s)
 
-    score = 50
-    if not np.isnan(vals["revenue_growth"]):
-        score += 10 if vals["revenue_growth"] > .10 else (-5 if vals["revenue_growth"] < 0 else 0)
-    if not np.isnan(vals["earnings_growth"]):
-        score += 10 if vals["earnings_growth"] > .10 else (-5 if vals["earnings_growth"] < 0 else 0)
-    if not np.isnan(vals["roe"]) and vals["roe"] > .15:
-        score += 10
-    if not np.isnan(vals["profit_margin"]) and vals["profit_margin"] > .10:
-        score += 5
-    if not np.isnan(vals["operating_margin"]) and vals["operating_margin"] > .10:
-        score += 5
-    if not np.isnan(vals["free_cash_flow"]) and vals["free_cash_flow"] > 0:
-        score += 10
-    if not np.isnan(vals["debt_equity"]):
-        score += 5 if vals["debt_equity"] < 100 else -5
-    if not np.isnan(vals["current_ratio"]) and vals["current_ratio"] > 1.2:
-        score += 5
-    if not np.isnan(vals["forward_pe"]):
-        if 0 < vals["forward_pe"] < 25:
-            score += 5
-        elif vals["forward_pe"] > 50:
-            score -= 5
 
-    vals["score"] = clamp(score)
-    return vals
+def valuation_score(f):
+    s = 50
+    pe, peg = f["forward_pe"], f["peg"]
+    if not np.isnan(pe) and pe > 0:
+        if pe < 15: s += 28
+        elif pe < 20: s += 18
+        elif pe < 30: s += 5
+        elif pe > 50: s -= 25
+        elif pe > 35: s -= 15
+    if not np.isnan(peg) and peg > 0:
+        if peg < 1: s += 18
+        elif peg < 1.5: s += 10
+        elif peg > 3: s -= 15
+    return clamp(s)
+
 
 def market_regime():
-    try:
-        spy = yf.Ticker("SPY").history(period="1y", auto_adjust=False)
-        if spy.empty:
-            return "UNKNOWN", 50
+    # Free: SPY + QQQ + IWM trend agreement.
+    scores = []
+    for sym in ["SPY", "QQQ", "IWM"]:
+        try:
+            h = yf.Ticker(sym).history(period="1y", auto_adjust=False)
+            if h.empty: continue
+            c = h["Close"].astype(float)
+            e50 = c.ewm(span=50, adjust=False).mean().iloc[-1]
+            e200 = c.ewm(span=200, adjust=False).mean().iloc[-1]
+            p = c.iloc[-1]
+            x = 50 + (15 if p > e50 else -15) + (20 if e50 > e200 else -20) + (15 if p > e200 else -15)
+            scores.append(x)
+        except Exception:
+            pass
+    if not scores: return "UNKNOWN", 50
+    score = clamp(np.mean(scores))
+    if score >= 65: return "RISK-ON", score
+    if score <= 35: return "RISK-OFF", score
+    return "NEUTRAL", score
 
-        close = spy["Close"].astype(float)
-        ema50 = close.ewm(span=50, adjust=False).mean().iloc[-1]
-        ema200 = close.ewm(span=200, adjust=False).mean().iloc[-1]
-        price = close.iloc[-1]
-
-        score = 50
-        score += 15 if price > ema50 else -15
-        score += 20 if ema50 > ema200 else -20
-        score += 15 if price > ema200 else -15
-        score = clamp(score)
-
-        if score >= 65:
-            return "RISK-ON", score
-        if score <= 35:
-            return "RISK-OFF", score
-        return "NEUTRAL", score
-    except Exception:
-        return "UNKNOWN", 50
 
 def momentum_score(ind):
-    score = 50
-    for r in (ind["return20"], ind["return60"]):
-        if np.isnan(r):
-            continue
-        if r > .10:
-            score += 20
-        elif r > 0:
-            score += 10
-        elif r < -.10:
-            score -= 20
-        else:
-            score -= 10
-    return clamp(score)
+    s = 50
+    for r, strong in [(ind["return20"], .08), (ind["return60"], .15)]:
+        if np.isnan(r): continue
+        if r > strong: s += 18
+        elif r > 0: s += 8
+        elif r < -strong: s -= 18
+        else: s -= 8
+    if ind["slope20"] > 0: s += 6
+    else: s -= 6
+    return clamp(s)
 
-def valuation_score(fund):
-    score = 50
-    pe, peg = fund["forward_pe"], fund["peg"]
-    if not np.isnan(pe):
-        if 0 < pe < 15:
-            score += 30
-        elif pe < 20:
-            score += 20
-        elif pe < 30:
-            score += 5
-        elif pe > 50:
-            score -= 25
-        elif pe > 35:
-            score -= 15
-    if not np.isnan(peg):
-        if 0 < peg < 1:
-            score += 20
-        elif peg < 1.5:
-            score += 10
-        elif peg > 3:
-            score -= 15
-    return clamp(score)
 
 def risk_score(ind):
-    price, atr = ind["price"], ind["atr"]
-    if np.isnan(atr) or price <= 0:
-        return 50
-    atr_pct = atr / price
-    if atr_pct < .02:
-        return 20
-    if atr_pct < .04:
-        return 40
-    if atr_pct < .06:
-        return 60
-    if atr_pct < .10:
-        return 80
-    return 95
+    a = ind["atr_pct"]
+    if np.isnan(a): return 50
+    if a < .02: return 20
+    if a < .04: return 35
+    if a < .06: return 55
+    if a < .08: return 70
+    return 90
 
-def calculate_master(technical, fundamental, momentum, valuation, macro, risk, regime):
-    raw = (
-        technical * .25 +
-        fundamental * .25 +
-        momentum * .15 +
-        valuation * .10 +
-        macro * .15 +
-        (100 - risk) * .10
-    )
-    if regime == "RISK-OFF":
-        raw -= 5
+
+def master_score(tech, fund, mom, val, macro, risk, regime):
+    # Slightly heavier technical/fundamental, but no single component dominates.
+    raw = tech*.24 + fund*.24 + mom*.16 + val*.12 + macro*.14 + (100-risk)*.10
+    if regime == "RISK-OFF": raw -= 7
+    if regime == "RISK-ON": raw += 3
     master = clamp(raw)
-
-    if master >= 70:
-        bias = "\U0001f7e2 LONG"
-    elif master <= 40:
-        bias = "\U0001f534 SHORT"
-    else:
-        bias = "\U0001f7e1 NEUTRAL"
+    if master >= 70: bias = "đŸŸ¢ LONG"
+    elif master <= 40: bias = "đŸ”´ SHORT"
+    else: bias = "đŸŸ¡ NEUTRAL"
     return master, bias
 
-def confidence_score(master, technical, fundamental, momentum, macro, risk, regime):
-    components = [technical, fundamental, momentum, macro, 100 - risk]
-    dispersion = np.std(components)
-    confidence = 50 + abs(master - 50) * .55
-    if dispersion < 15:
-        confidence += 10
-    elif dispersion > 30:
-        confidence -= 10
-    if regime == "RISK-OFF" and master >= 50:
-        confidence -= 8
-    return clamp(confidence, 35, 92)
 
-def trade_setup(ind, bias):
-    price, atr = ind["price"], ind["atr"]
-    if np.isnan(atr):
-        atr = price * .04
+def confidence(master, tech, fund, mom, val, macro, risk, regime):
+    vals = np.array([tech, fund, mom, val, macro, 100-risk], dtype=float)
+    dispersion = np.std(vals)
+    agreement = 100 - min(100, dispersion * 1.7)
+    directional = abs(master - 50) * 1.0
+    c = 42 + directional*.45 + agreement*.22
+    if regime == "RISK-OFF" and master > 55: c -= 8
+    if regime == "RISK-ON" and master < 45: c -= 8
+    return clamp(c, 35, 94)
 
+
+def setup(ind, bias):
+    p, atr = ind["price"], ind["atr"]
+    atr = atr if not np.isnan(atr) and atr > 0 else p*.04
     if "LONG" in bias:
-        entry_low = price - atr * .50
-        entry_high = price + atr * .15
-        stop = price - atr * 1.50
-        risk = price - stop
-        tp1 = price + risk * 1.50
-        tp2 = price + risk * 2.00
+        entry_low, entry_high = p-0.35*atr, p+0.10*atr
+        stop = p-1.50*atr
+        risk = p-stop
+        tp1, tp2 = p+1.50*risk, p+2.25*risk
     elif "SHORT" in bias:
-        entry_low = price - atr * .15
-        entry_high = price + atr * .50
-        stop = price + atr * 1.50
-        risk = stop - price
-        tp1 = price - risk * 1.50
-        tp2 = price - risk * 2.00
+        entry_low, entry_high = p-0.10*atr, p+0.35*atr
+        stop = p+1.50*atr
+        risk = stop-p
+        tp1, tp2 = p-1.50*risk, p-2.25*risk
     else:
-        entry_low = price - atr * .25
-        entry_high = price + atr * .25
+        entry_low, entry_high = p-0.20*atr, p+0.20*atr
         stop = tp1 = tp2 = np.nan
-
     return entry_low, entry_high, stop, tp1, tp2
 
-def backtest(hist):
-    close = hist["Close"].astype(float)
-    if len(close) < 220:
-        return None
 
+def backtest(hist, cost_bps=10, max_hold=10):
+    # Event-driven daily backtest: signal at close -> entry next open.
+    # Stop/TP are ATR based. Conservative if both are touched on same candle: stop first.
+    if len(hist) < 260: return None
+    h = hist.copy()
+    close = h["Close"].astype(float)
+    open_ = h["Open"].astype(float)
+    high = h["High"].astype(float)
+    low = h["Low"].astype(float)
     ema20 = close.ewm(span=20, adjust=False).mean()
     ema50 = close.ewm(span=50, adjust=False).mean()
     ema200 = close.ewm(span=200, adjust=False).mean()
-
-    delta = close.diff()
-    gain = delta.clip(lower=0).rolling(14).mean()
-    loss = (-delta.clip(upper=0)).rolling(14).mean()
-    rs = gain / loss.replace(0, np.nan)
-    rsi = 100 - 100 / (1 + rs)
-
+    rsi = rsi_series(close)
     macd = close.ewm(span=12, adjust=False).mean() - close.ewm(span=26, adjust=False).mean()
     signal = macd.ewm(span=9, adjust=False).mean()
+    atr = atr_series(h)
+    adx, plus, minus = adx_series(h)
+    long_sig = (close > ema20) & (ema20 > ema50) & (ema50 > ema200) & (macd > signal) & (rsi > 52) & (plus > minus) & (adx > 18)
+    short_sig = (close < ema20) & (ema20 < ema50) & (ema50 < ema200) & (macd < signal) & (rsi < 48) & (minus > plus) & (adx > 18)
 
-    long_sig = (close > ema20) & (ema20 > ema50) & (ema50 > ema200) & (macd > signal) & (rsi > 50)
-    short_sig = (close < ema20) & (ema20 < ema50) & (ema50 < ema200) & (macd < signal) & (rsi < 50)
-
-    future_return = close.shift(-5) / close - 1
     trades = []
+    i = 210
+    while i < len(h)-1:
+        direction = 1 if long_sig.iloc[i] else (-1 if short_sig.iloc[i] else 0)
+        if direction == 0 or np.isnan(atr.iloc[i]):
+            i += 1; continue
+        entry_i = i + 1
+        entry = open_.iloc[entry_i] * (1 + cost_bps/10000 * direction)
+        a = atr.iloc[i]
+        stop = entry - direction * 1.5*a
+        target = entry + direction * 2.25*a
+        exit_price = close.iloc[min(entry_i+max_hold-1, len(h)-1)]
+        exit_i = min(entry_i+max_hold-1, len(h)-1)
+        reason = "TIME"
+        for j in range(entry_i, exit_i+1):
+            hit_stop = (low.iloc[j] <= stop) if direction == 1 else (high.iloc[j] >= stop)
+            hit_target = (high.iloc[j] >= target) if direction == 1 else (low.iloc[j] <= target)
+            if hit_stop and hit_target:
+                exit_price, exit_i, reason = stop, j, "STOP (conservative)"
+                break
+            if hit_stop:
+                exit_price, exit_i, reason = stop, j, "STOP"
+                break
+            if hit_target:
+                exit_price, exit_i, reason = target, j, "TP"
+                break
+        exit_price *= (1 - cost_bps/10000 * direction)
+        ret = direction * (exit_price/entry - 1)
+        trades.append(ret)
+        i = exit_i + 1
 
-    for i in range(len(close) - 5):
-        if long_sig.iloc[i]:
-            trades.append(future_return.iloc[i])
-        elif short_sig.iloc[i]:
-            trades.append(-future_return.iloc[i])
-
-    trades = pd.Series(trades).dropna()
-    if trades.empty:
-        return None
-
-    wins = trades[trades > 0]
-    losses = trades[trades <= 0]
-    gross_profit = wins.sum()
-    gross_loss = abs(losses.sum())
-
-    equity = (1 + trades).cumprod()
-    drawdown = equity / equity.cummax() - 1
-
+    if not trades: return None
+    tr = pd.Series(trades, dtype=float)
+    wins = tr[tr > 0]
+    losses = tr[tr <= 0]
+    eq = (1+tr).cumprod()
+    dd = eq/eq.cummax()-1
     return {
-        "trades": len(trades),
-        "win_rate": len(wins) / len(trades),
-        "profit_factor": gross_profit / gross_loss if gross_loss > 0 else np.inf,
-        "max_drawdown": abs(drawdown.min())
+        "trades": len(tr), "win_rate": float((tr>0).mean()),
+        "profit_factor": float(wins.sum()/abs(losses.sum())) if len(losses) else np.inf,
+        "max_drawdown": float(abs(dd.min())), "total_return": float(eq.iloc[-1]-1),
+        "avg_trade": float(tr.mean()),
     }
 
-st.title("\U0001f4ca AI MASTER STOCK BOT \u2014 MAX VIP FREE")
-st.caption("Technical + Fundamental + Momentum + Valuation + Macro + Risk \u2022 Kh\u00f4ng t\u1ef1 \u0111\u1eb7t l\u1ec7nh \u2022 Kh\u00f4ng c\u1ea7n API tr\u1ea3 ph\u00ed")
 
-ticker = st.text_input("Nh\u1eadp m\u00e3 c\u1ed5 phi\u1ebfu", "MU").upper().strip()
+st.title("đŸ“ AI MASTER STOCK BOT â€” MAX VIP FREE")
+st.caption("Technical + Fundamental + Momentum + Valuation + Macro + Risk â€¢ V2 â€¢ Chá»‰ phĂ¢n tĂ­ch â€¢ KhĂ´ng tá»± Ä‘áº·t lá»‡nh â€¢ KhĂ´ng cáº§n API tráº£ phĂ­")
 
-if st.button("\U0001f50e PH\u00c2N T\u00cdCH MAX VIP", use_container_width=True):
+ticker = st.text_input("Nháº­p mĂ£ cá»• phiáº¿u", "MU").upper().strip()
+
+if st.button("đŸ” PHĂ‚N TĂCH MAX VIP", use_container_width=True):
     if not ticker:
-        st.warning("Nh\u1eadp m\u00e3 c\u1ed5 phi\u1ebfu tr\u01b0\u1edbc.")
-        st.stop()
-
+        st.warning("Nháº­p mĂ£ cá»• phiáº¿u trÆ°á»›c."); st.stop()
     try:
         stock = yf.Ticker(ticker)
         info = stock.info
-        hist = stock.history(period="2y", auto_adjust=False)
+        hist = stock.history(period="3y", auto_adjust=False)
+        if hist.empty or len(hist) < 260:
+            st.error("KhĂ´ng Ä‘á»§ dá»¯ liá»‡u lá»‹ch sá»­ cho mĂ£ nĂ y."); st.stop()
 
-        if hist.empty or len(hist) < 100:
-            st.error("Kh\u00f4ng \u0111\u1ee7 d\u1eef li\u1ec7u cho m\u00e3 n\u00e0y.")
-            st.stop()
-
-        ind = calculate_indicators(hist)
+        ind = indicators(hist)
         tech = technical_score(ind)
-        fund = get_fundamentals(info)
-        fundamental = fund["score"]
-        momentum = momentum_score(ind)
-        valuation = valuation_score(fund)
-        regime, regime_score = market_regime()
-        macro = regime_score
+        fund, fundamental = fundamentals(info)
+        mom = momentum_score(ind)
+        val = valuation_score(fund)
+        regime, macro = market_regime()
         risk = risk_score(ind)
+        master, bias = master_score(tech, fundamental, mom, val, macro, risk, regime)
+        conf = confidence(master, tech, fundamental, mom, val, macro, risk, regime)
+        e1,e2,stop,tp1,tp2 = setup(ind,bias)
 
-        master, bias = calculate_master(
-            tech, fundamental, momentum, valuation, macro, risk, regime
-        )
-        confidence = confidence_score(
-            master, tech, fundamental, momentum, macro, risk, regime
-        )
+        st.subheader(f"{ticker} â€” {bias}")
+        c = st.columns(4)
+        c[0].metric("GiĂ¡", f"${ind['price']:.2f}")
+        c[1].metric("MAX SCORE", f"{master}/100")
+        c[2].metric("Confidence", f"{conf}%")
+        c[3].metric("Market", regime)
+        c = st.columns(6)
+        for box, label, value in zip(c,["Technical","Fundamental","Momentum","Valuation","Macro","Risk"],[tech,fundamental,mom,val,macro,risk]):
+            box.metric(label,f"{value}/100")
 
-        entry_low, entry_high, stop, tp1, tp2 = trade_setup(ind, bias)
+        if risk >= 70: st.warning("â ï¸ Risk cao: ATR lá»›n, nĂªn giáº£m vá»‹ tháº¿ náº¿u giao dá»‹ch thá»±c táº¿.")
+        if regime == "RISK-OFF": st.warning("â ï¸ Thá»‹ trÆ°á»ng chung RISK-OFF â€” Æ°u tiĂªn tĂ­n hiá»‡u cĂ³ xĂ¡c nháº­n máº¡nh.")
+        if conf < 60: st.info("â„¹ï¸ Confidence chÆ°a cao â€” cĂ¡c nhĂ³m tĂ­n hiá»‡u Ä‘ang phĂ¢n ká»³.")
 
-        st.subheader(f"{ticker} \u2014 {bias}")
+        st.subheader("đŸ¯ Trade Setup")
+        t=st.columns(5)
+        t[0].metric("Entry zone",f"${e1:.2f} â€“ ${e2:.2f}")
+        t[1].metric("Stop Loss",fmt(stop))
+        t[2].metric("TP1",fmt(tp1))
+        t[3].metric("TP2",fmt(tp2))
+        t[4].metric("R/R","1 : 1.5 / 2.25" if "NEUTRAL" not in bias else "N/A")
 
-        c1, c2, c3, c4 = st.columns(4)
-        c1.metric("Gi\u00e1", f"${ind['price']:.2f}")
-        c2.metric("MAX SCORE", f"{master}/100")
-        c3.metric("Confidence", f"{confidence}%")
-        c4.metric("Market", regime)
+        st.subheader("đŸ“ˆ Technical")
+        tech_df=pd.DataFrame([
+            ["RSI",fmt(ind['rsi'])],["MACD",fmt(ind['macd'])],["EMA20",fmt(ind['ema20'])],["EMA50",fmt(ind['ema50'])],["EMA200",fmt(ind['ema200'])],
+            ["ATR14",fmt(ind['atr'])],["ATR %",pct(ind['atr_pct'])],["ADX",fmt(ind['adx'])],["+DI",fmt(ind['plus_di'])],["-DI",fmt(ind['minus_di'])],
+            ["RVOL",fmt(ind['rvol'])],["20D Return",pct(ind['return20'])],["60D Return",pct(ind['return60'])],["20D Range Position",pct(ind['range20_pos'])]
+        ],columns=["Metric","Value"])
+        st.dataframe(tech_df,use_container_width=True,hide_index=True)
 
-        cols = st.columns(6)
-        cols[0].metric("Technical", f"{tech}/100")
-        cols[1].metric("Fundamental", f"{fundamental}/100")
-        cols[2].metric("Momentum", f"{momentum}/100")
-        cols[3].metric("Valuation", f"{valuation}/100")
-        cols[4].metric("Macro", f"{macro}/100")
-        cols[5].metric("Risk", f"{risk}/100")
+        st.subheader("đŸŒ Market Regime")
+        msg=f"Market Score {macro}/100"
+        if regime=="RISK-ON": st.success(f"đŸŸ¢ RISK-ON â€” {msg}")
+        elif regime=="RISK-OFF": st.error(f"đŸ”´ RISK-OFF â€” {msg}")
+        else: st.info(f"đŸŸ¡ NEUTRAL â€” {msg}")
 
-        if regime == "RISK-OFF":
-            st.warning("\u26a0\ufe0f TH\u1eca TR\u01af\u1edcNG \u0110ANG RISK-OFF \u2014 t\u00edn hi\u1ec7u LONG c\u1ea7n th\u1eadn tr\u1ecdng.")
-        if macro < 40:
-            st.warning("\u26a0\ufe0f Macro th\u1ea5p \u2014 b\u1ed1i c\u1ea3nh th\u1ecb tr\u01b0\u1eddng kh\u00f4ng thu\u1eadn l\u1ee3i.")
-        if risk >= 70:
-            st.error("\U0001f534 Risk cao \u2014 bi\u1ebfn \u0111\u1ed9ng l\u1edbn.")
-        if confidence < 60:
-            st.info("\u2139\ufe0f Confidence ch\u01b0a cao \u2014 n\u00ean ch\u1edd th\u00eam x\u00e1c nh\u1eadn.")
+        st.subheader("đŸ‚ Bull Case")
+        bulls=[]
+        if ind['price']>ind['ema20']: bulls.append("GiĂ¡ trĂªn EMA20")
+        if ind['ema20']>ind['ema50']: bulls.append("EMA20 > EMA50")
+        if ind['ema50']>ind['ema200']: bulls.append("EMA50 > EMA200")
+        if ind['macd_bull']: bulls.append("MACD bullish")
+        if 52<=ind['rsi']<=68: bulls.append("RSI khá»e, chÆ°a quĂ¡ nĂ³ng")
+        if ind['adx']>=25 and ind['plus_di']>ind['minus_di']: bulls.append("ADX xĂ¡c nháº­n xu hÆ°á»›ng tÄƒng")
+        if fundamental>=65: bulls.append("Fundamental tá»‘t")
+        if mom>=60: bulls.append("Momentum tĂ­ch cá»±c")
+        if not bulls: bulls=["ChÆ°a cĂ³ nhiá»u yáº¿u tá»‘ há»— trá»£."]
+        for x in bulls: st.write(f"â€¢ {x}")
 
-        st.subheader("\U0001f3af Trade Setup")
-        t1, t2, t3, t4, t5 = st.columns(5)
-        t1.metric("Entry zone", f"${entry_low:.2f} \u2013 ${entry_high:.2f}")
-        t2.metric("Stop Loss", fmt(stop))
-        t3.metric("TP1", fmt(tp1))
-        t4.metric("TP2", fmt(tp2))
-        t5.metric("R/R", "1 : 1.5 / 2.0" if "NEUTRAL" not in bias else "N/A")
+        st.subheader("đŸ» Bear / Risk Case")
+        bears=[]
+        if regime=="RISK-OFF": bears.append("Thá»‹ trÆ°á»ng chung Ä‘ang RISK-OFF")
+        if risk>=70: bears.append("Biáº¿n Ä‘á»™ng cao")
+        if ind['return20']<0: bears.append("20D Return Ă¢m")
+        if ind['return60']<0: bears.append("60D Return Ă¢m")
+        if mom<45: bears.append("Momentum yáº¿u")
+        if ind['adx']<18: bears.append("Xu hÆ°á»›ng chÆ°a Ä‘á»§ máº¡nh")
+        if not bears: bears=["ChÆ°a phĂ¡t hiá»‡n rá»§i ro Ä‘á»‹nh lÆ°á»£ng lá»›n tá»« dá»¯ liá»‡u hiá»‡n cĂ³."]
+        for x in bears: st.write(f"â€¢ {x}")
 
-        st.subheader("\U0001f4c8 Technical")
-        technical_df = pd.DataFrame([
-            ["RSI", fmt(ind["rsi"])],
-            ["MACD", fmt(ind["macd"])],
-            ["EMA20", fmt(ind["ema20"])],
-            ["EMA50", fmt(ind["ema50"])],
-            ["EMA200", fmt(ind["ema200"])],
-            ["ATR14", fmt(ind["atr"])],
-            ["RVOL", fmt(ind["rvol"])],
-            ["20D Return", pct(ind["return20"])],
-            ["60D Return", pct(ind["return60"])],
-        ], columns=["Metric", "Value"])
-        st.dataframe(technical_df, use_container_width=True, hide_index=True)
+        st.subheader("đŸ’° Fundamental")
+        fdf=pd.DataFrame([
+            ["Revenue growth",pct(fund['revenue_growth'])],["EPS/Earnings growth",pct(fund['earnings_growth'])],["ROE",pct(fund['roe'])],
+            ["Net margin",pct(fund['profit_margin'])],["Operating margin",pct(fund['operating_margin'])],["Debt/Equity",fmt(fund['debt_equity'])],
+            ["Current ratio",fmt(fund['current_ratio'])],["Forward P/E",fmt(fund['forward_pe'])],["Trailing P/E",fmt(fund['trailing_pe'])],
+            ["PEG",fmt(fund['peg'])],["Free cash flow",fmt(fund['free_cash_flow'])]
+        ],columns=["Metric","Value"])
+        st.dataframe(fdf,use_container_width=True,hide_index=True)
 
-        st.subheader("\U0001f30d Market Regime")
-        if regime == "RISK-ON":
-            st.success(f"\U0001f7e2 RISK-ON \u2014 Market Score {regime_score}/100")
-        elif regime == "RISK-OFF":
-            st.error(f"\U0001f534 RISK-OFF \u2014 Market Score {regime_score}/100")
-        else:
-            st.info(f"\U0001f7e1 NEUTRAL \u2014 Market Score {regime_score}/100")
+        st.subheader("đŸ§ª Backtest MAX V2")
+        bt=backtest(hist)
+        if bt:
+            b=st.columns(5)
+            b[0].metric("Trades",bt['trades']); b[1].metric("Win rate",f"{bt['win_rate']*100:.1f}%"); b[2].metric("Profit factor",fmt(bt['profit_factor'])); b[3].metric("Max drawdown",f"{bt['max_drawdown']*100:.1f}%"); b[4].metric("Total return",f"{bt['total_return']*100:.1f}%")
+            st.caption("Backtest V2: vĂ o lá»‡nh á»Ÿ Open phiĂªn káº¿ tiáº¿p, cĂ³ ATR Stop/TP, tá»‘i Ä‘a 10 phiĂªn giá»¯ lá»‡nh vĂ  chi phĂ­ giáº£ Ä‘á»‹nh 0,10%/lÆ°á»£t. KhĂ´ng bao gá»“m thuáº¿/borrow fee vĂ  khĂ´ng Ä‘áº£m báº£o lá»£i nhuáº­n tÆ°Æ¡ng lai.")
+        else: st.info("KhĂ´ng Ä‘á»§ tĂ­n hiá»‡u Ä‘á»ƒ cháº¡y backtest.")
 
-        st.subheader("\U0001f402 Bull Case")
-        bull_points = []
-        if ind["price"] > ind["ema20"]: bull_points.append("Gi\u00e1 tr\u00ean EMA20")
-        if ind["ema20"] > ind["ema50"]: bull_points.append("EMA20 > EMA50")
-        if ind["ema50"] > ind["ema200"]: bull_points.append("EMA50 > EMA200")
-        if ind["macd_bull"]: bull_points.append("MACD bullish")
-        if 50 <= ind["rsi"] < 70: bull_points.append("RSI kh\u1ecfe, ch\u01b0a qu\u00e1 n\u00f3ng")
-        if fundamental >= 65: bull_points.append("Fundamental t\u1ed1t")
-        if momentum >= 60: bull_points.append("Momentum t\u00edch c\u1ef1c")
-        if not bull_points: bull_points.append("Ch\u01b0a c\u00f3 nhi\u1ec1u y\u1ebfu t\u1ed1 h\u1ed7 tr\u1ee3.")
-        for x in bull_points: st.write(f"\u2022 {x}")
-
-        st.subheader("\U0001f43b Bear / Risk Case")
-        bear_points = []
-        if regime == "RISK-OFF": bear_points.append("Th\u1ecb tr\u01b0\u1eddng chung \u0111ang RISK-OFF")
-        if macro < 40: bear_points.append("Macro Score th\u1ea5p")
-        if risk >= 70: bear_points.append("Bi\u1ebfn \u0111\u1ed9ng cao")
-        if not np.isnan(ind["return20"]) and ind["return20"] < 0: bear_points.append("20D Return \u00e2m")
-        if not np.isnan(ind["return60"]) and ind["return60"] < 0: bear_points.append("60D Return \u00e2m")
-        if momentum < 45: bear_points.append("Momentum y\u1ebfu")
-        if not bear_points: bear_points.append("Ch\u01b0a ph\u00e1t hi\u1ec7n r\u1ee7i ro \u0111\u1ecbnh l\u01b0\u1ee3ng l\u1edbn t\u1eeb d\u1eef li\u1ec7u hi\u1ec7n c\u00f3.")
-        for x in bear_points: st.write(f"\u2022 {x}")
-
-        st.subheader("\U0001f4b0 Fundamental")
-        fundamental_df = pd.DataFrame([
-            ["Revenue growth", pct(fund["revenue_growth"])],
-            ["EPS/Earnings growth", pct(fund["earnings_growth"])],
-            ["ROE", pct(fund["roe"])],
-            ["Net margin", pct(fund["profit_margin"])],
-            ["Operating margin", pct(fund["operating_margin"])],
-            ["Debt/Equity", fmt(fund["debt_equity"])],
-            ["Current ratio", fmt(fund["current_ratio"])],
-            ["Forward P/E", fmt(fund["forward_pe"])],
-            ["Trailing P/E", fmt(fund["trailing_pe"])],
-            ["PEG", fmt(fund["peg"])],
-            ["Free cash flow", fmt(fund["free_cash_flow"])],
-        ], columns=["Metric", "Value"])
-        st.dataframe(fundamental_df, use_container_width=True, hide_index=True)
-
-        st.subheader("\U0001f9ea Backtest nhanh")
-        result = backtest(hist)
-        if result:
-            b1, b2, b3, b4 = st.columns(4)
-            b1.metric("Trades", result["trades"])
-            b2.metric("Win rate", f"{result['win_rate'] * 100:.1f}%")
-            b3.metric("Profit factor", fmt(result["profit_factor"]))
-            b4.metric("Max drawdown", f"{result['max_drawdown'] * 100:.1f}%")
-            st.caption("Backtest 5 ng\u00e0y, ch\u01b0a bao g\u1ed3m ph\u00ed, spread, slippage v\u00e0 thu\u1ebf. K\u1ebft qu\u1ea3 qu\u00e1 kh\u1ee9 kh\u00f4ng \u0111\u1ea3m b\u1ea3o l\u1ee3i nhu\u1eadn t\u01b0\u01a1ng lai.")
-        else:
-            st.info("Kh\u00f4ng \u0111\u1ee7 d\u1eef li\u1ec7u \u0111\u1ec3 ch\u1ea1y backtest.")
-
-        st.subheader("\U0001f9e0 MAX VIP Verdict")
+        st.subheader("đŸ§  MAX VIP Verdict")
         if "LONG" in bias:
-            if regime == "RISK-OFF" or macro < 40:
-                st.warning(f"\U0001f7e2 LONG nh\u01b0ng r\u1ee7i ro cao \u2014 MAX {master}/100 \u2022 Confidence {confidence}%.")
-            else:
-                st.success(f"\U0001f7e2 LONG \u2014 MAX {master}/100 \u2022 Confidence {confidence}%.")
-        elif "SHORT" in bias:
-            st.error(f"\U0001f534 SHORT \u2014 MAX {master}/100 \u2022 Confidence {confidence}%.")
-        else:
-            st.info(f"\U0001f7e1 NEUTRAL \u2014 MAX {master}/100 \u2022 Confidence {confidence}%.")
-
-        st.info("Bot ch\u1ec9 ph\u00e2n t\u00edch d\u1eef li\u1ec7u. Kh\u00f4ng t\u1ef1 mua, b\u00e1n ho\u1eb7c \u0111\u1eb7t l\u1ec7nh.")
-
+            if regime=="RISK-OFF" or risk>=70: st.warning(f"đŸŸ¢ LONG nhÆ°ng cáº§n tháº­n trá»ng â€” MAX {master}/100 â€¢ Confidence {conf}%.")
+            else: st.success(f"đŸŸ¢ LONG â€” MAX {master}/100 â€¢ Confidence {conf}%.")
+        elif "SHORT" in bias: st.error(f"đŸ”´ SHORT â€” MAX {master}/100 â€¢ Confidence {conf}%.")
+        else: st.info(f"đŸŸ¡ NEUTRAL â€” MAX {master}/100 â€¢ Confidence {conf}%.")
+        st.info("Bot chá»‰ phĂ¢n tĂ­ch dá»¯ liá»‡u. KhĂ´ng tá»± mua, bĂ¡n hoáº·c Ä‘áº·t lá»‡nh.")
     except Exception as e:
-        st.error(f"L\u1ed7i khi ph\u00e2n t\u00edch {ticker}: {e}")
+        st.error(f"Lá»—i khi phĂ¢n tĂ­ch {ticker}: {e}")
