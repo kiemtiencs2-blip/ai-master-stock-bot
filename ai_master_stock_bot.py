@@ -3,10 +3,10 @@ import yfinance as yf
 import pandas as pd
 import numpy as np
 
-st.set_page_config(page_title="AI MASTER STOCK BOT â€” MAX VIP FREE", page_icon="đŸ“", layout="wide")
+st.set_page_config(page_title="AI MASTER STOCK BOT — MAX VIP FREE", page_icon="📊", layout="wide")
 
 # ============================================================
-# MAX VIP FREE V2 â€” free data only, no broker/API trading
+# MAX VIP FREE V2 — free data only, no broker/API trading
 # ============================================================
 
 def sf(x, default=np.nan):
@@ -217,9 +217,9 @@ def master_score(tech, fund, mom, val, macro, risk, regime):
     if regime == "RISK-OFF": raw -= 7
     if regime == "RISK-ON": raw += 3
     master = clamp(raw)
-    if master >= 70: bias = "đŸŸ¢ LONG"
-    elif master <= 40: bias = "đŸ”´ SHORT"
-    else: bias = "đŸŸ¡ NEUTRAL"
+    if master >= 70: bias = "🟢 LONG"
+    elif master <= 40: bias = "🔴 SHORT"
+    else: bias = "🟡 NEUTRAL"
     return master, bias
 
 
@@ -318,20 +318,20 @@ def backtest(hist, cost_bps=10, max_hold=10):
     }
 
 
-st.title("đŸ“ AI MASTER STOCK BOT â€” MAX VIP FREE")
-st.caption("Technical + Fundamental + Momentum + Valuation + Macro + Risk â€¢ V2 â€¢ Chá»‰ phĂ¢n tĂ­ch â€¢ KhĂ´ng tá»± Ä‘áº·t lá»‡nh â€¢ KhĂ´ng cáº§n API tráº£ phĂ­")
+st.title("📊 AI MASTER STOCK BOT — MAX VIP FREE")
+st.caption("Technical + Fundamental + Momentum + Valuation + Macro + Risk • V2 • Chỉ phân tích • Không tự đặt lệnh • Không cần API trả phí")
 
-ticker = st.text_input("Nháº­p mĂ£ cá»• phiáº¿u", "MU").upper().strip()
+ticker = st.text_input("Nhập mã cổ phiếu", "MU").upper().strip()
 
-if st.button("đŸ” PHĂ‚N TĂCH MAX VIP", use_container_width=True):
+if st.button("🔎 PHÂN TÍCH MAX VIP", use_container_width=True):
     if not ticker:
-        st.warning("Nháº­p mĂ£ cá»• phiáº¿u trÆ°á»›c."); st.stop()
+        st.warning("Nhập mã cổ phiếu trước."); st.stop()
     try:
         stock = yf.Ticker(ticker)
         info = stock.info
         hist = stock.history(period="3y", auto_adjust=False)
         if hist.empty or len(hist) < 260:
-            st.error("KhĂ´ng Ä‘á»§ dá»¯ liá»‡u lá»‹ch sá»­ cho mĂ£ nĂ y."); st.stop()
+            st.error("Không đủ dữ liệu lịch sử cho mã này."); st.stop()
 
         ind = indicators(hist)
         tech = technical_score(ind)
@@ -344,9 +344,9 @@ if st.button("đŸ” PHĂ‚N TĂCH MAX VIP", use_container_width=True):
         conf = confidence(master, tech, fundamental, mom, val, macro, risk, regime)
         e1,e2,stop,tp1,tp2 = setup(ind,bias)
 
-        st.subheader(f"{ticker} â€” {bias}")
+        st.subheader(f"{ticker} — {bias}")
         c = st.columns(4)
-        c[0].metric("GiĂ¡", f"${ind['price']:.2f}")
+        c[0].metric("Giá", f"${ind['price']:.2f}")
         c[1].metric("MAX SCORE", f"{master}/100")
         c[2].metric("Confidence", f"{conf}%")
         c[3].metric("Market", regime)
@@ -354,19 +354,19 @@ if st.button("đŸ” PHĂ‚N TĂCH MAX VIP", use_container_width=True):
         for box, label, value in zip(c,["Technical","Fundamental","Momentum","Valuation","Macro","Risk"],[tech,fundamental,mom,val,macro,risk]):
             box.metric(label,f"{value}/100")
 
-        if risk >= 70: st.warning("â ï¸ Risk cao: ATR lá»›n, nĂªn giáº£m vá»‹ tháº¿ náº¿u giao dá»‹ch thá»±c táº¿.")
-        if regime == "RISK-OFF": st.warning("â ï¸ Thá»‹ trÆ°á»ng chung RISK-OFF â€” Æ°u tiĂªn tĂ­n hiá»‡u cĂ³ xĂ¡c nháº­n máº¡nh.")
-        if conf < 60: st.info("â„¹ï¸ Confidence chÆ°a cao â€” cĂ¡c nhĂ³m tĂ­n hiá»‡u Ä‘ang phĂ¢n ká»³.")
+        if risk >= 70: st.warning("⚠️ Risk cao: ATR lớn, nên giảm vị thế nếu giao dịch thực tế.")
+        if regime == "RISK-OFF": st.warning("⚠️ Thị trường chung RISK-OFF — ưu tiên tín hiệu có xác nhận mạnh.")
+        if conf < 60: st.info("ℹ️ Confidence chưa cao — các nhóm tín hiệu đang phân kỳ.")
 
-        st.subheader("đŸ¯ Trade Setup")
+        st.subheader("🎯 Trade Setup")
         t=st.columns(5)
-        t[0].metric("Entry zone",f"${e1:.2f} â€“ ${e2:.2f}")
+        t[0].metric("Entry zone",f"${e1:.2f} – ${e2:.2f}")
         t[1].metric("Stop Loss",fmt(stop))
         t[2].metric("TP1",fmt(tp1))
         t[3].metric("TP2",fmt(tp2))
         t[4].metric("R/R","1 : 1.5 / 2.25" if "NEUTRAL" not in bias else "N/A")
 
-        st.subheader("đŸ“ˆ Technical")
+        st.subheader("📈 Technical")
         tech_df=pd.DataFrame([
             ["RSI",fmt(ind['rsi'])],["MACD",fmt(ind['macd'])],["EMA20",fmt(ind['ema20'])],["EMA50",fmt(ind['ema50'])],["EMA200",fmt(ind['ema200'])],
             ["ATR14",fmt(ind['atr'])],["ATR %",pct(ind['atr_pct'])],["ADX",fmt(ind['adx'])],["+DI",fmt(ind['plus_di'])],["-DI",fmt(ind['minus_di'])],
@@ -374,37 +374,37 @@ if st.button("đŸ” PHĂ‚N TĂCH MAX VIP", use_container_width=True):
         ],columns=["Metric","Value"])
         st.dataframe(tech_df,use_container_width=True,hide_index=True)
 
-        st.subheader("đŸŒ Market Regime")
+        st.subheader("🌍 Market Regime")
         msg=f"Market Score {macro}/100"
-        if regime=="RISK-ON": st.success(f"đŸŸ¢ RISK-ON â€” {msg}")
-        elif regime=="RISK-OFF": st.error(f"đŸ”´ RISK-OFF â€” {msg}")
-        else: st.info(f"đŸŸ¡ NEUTRAL â€” {msg}")
+        if regime=="RISK-ON": st.success(f"🟢 RISK-ON — {msg}")
+        elif regime=="RISK-OFF": st.error(f"🔴 RISK-OFF — {msg}")
+        else: st.info(f"🟡 NEUTRAL — {msg}")
 
-        st.subheader("đŸ‚ Bull Case")
+        st.subheader("🐂 Bull Case")
         bulls=[]
-        if ind['price']>ind['ema20']: bulls.append("GiĂ¡ trĂªn EMA20")
+        if ind['price']>ind['ema20']: bulls.append("Giá trên EMA20")
         if ind['ema20']>ind['ema50']: bulls.append("EMA20 > EMA50")
         if ind['ema50']>ind['ema200']: bulls.append("EMA50 > EMA200")
         if ind['macd_bull']: bulls.append("MACD bullish")
-        if 52<=ind['rsi']<=68: bulls.append("RSI khá»e, chÆ°a quĂ¡ nĂ³ng")
-        if ind['adx']>=25 and ind['plus_di']>ind['minus_di']: bulls.append("ADX xĂ¡c nháº­n xu hÆ°á»›ng tÄƒng")
-        if fundamental>=65: bulls.append("Fundamental tá»‘t")
-        if mom>=60: bulls.append("Momentum tĂ­ch cá»±c")
-        if not bulls: bulls=["ChÆ°a cĂ³ nhiá»u yáº¿u tá»‘ há»— trá»£."]
-        for x in bulls: st.write(f"â€¢ {x}")
+        if 52<=ind['rsi']<=68: bulls.append("RSI khỏe, chưa quá nóng")
+        if ind['adx']>=25 and ind['plus_di']>ind['minus_di']: bulls.append("ADX xác nhận xu hướng tăng")
+        if fundamental>=65: bulls.append("Fundamental tốt")
+        if mom>=60: bulls.append("Momentum tích cực")
+        if not bulls: bulls=["Chưa có nhiều yếu tố hỗ trợ."]
+        for x in bulls: st.write(f"• {x}")
 
-        st.subheader("đŸ» Bear / Risk Case")
+        st.subheader("🐻 Bear / Risk Case")
         bears=[]
-        if regime=="RISK-OFF": bears.append("Thá»‹ trÆ°á»ng chung Ä‘ang RISK-OFF")
-        if risk>=70: bears.append("Biáº¿n Ä‘á»™ng cao")
-        if ind['return20']<0: bears.append("20D Return Ă¢m")
-        if ind['return60']<0: bears.append("60D Return Ă¢m")
-        if mom<45: bears.append("Momentum yáº¿u")
-        if ind['adx']<18: bears.append("Xu hÆ°á»›ng chÆ°a Ä‘á»§ máº¡nh")
-        if not bears: bears=["ChÆ°a phĂ¡t hiá»‡n rá»§i ro Ä‘á»‹nh lÆ°á»£ng lá»›n tá»« dá»¯ liá»‡u hiá»‡n cĂ³."]
-        for x in bears: st.write(f"â€¢ {x}")
+        if regime=="RISK-OFF": bears.append("Thị trường chung đang RISK-OFF")
+        if risk>=70: bears.append("Biến động cao")
+        if ind['return20']<0: bears.append("20D Return âm")
+        if ind['return60']<0: bears.append("60D Return âm")
+        if mom<45: bears.append("Momentum yếu")
+        if ind['adx']<18: bears.append("Xu hướng chưa đủ mạnh")
+        if not bears: bears=["Chưa phát hiện rủi ro định lượng lớn từ dữ liệu hiện có."]
+        for x in bears: st.write(f"• {x}")
 
-        st.subheader("đŸ’° Fundamental")
+        st.subheader("💰 Fundamental")
         fdf=pd.DataFrame([
             ["Revenue growth",pct(fund['revenue_growth'])],["EPS/Earnings growth",pct(fund['earnings_growth'])],["ROE",pct(fund['roe'])],
             ["Net margin",pct(fund['profit_margin'])],["Operating margin",pct(fund['operating_margin'])],["Debt/Equity",fmt(fund['debt_equity'])],
@@ -413,20 +413,20 @@ if st.button("đŸ” PHĂ‚N TĂCH MAX VIP", use_container_width=True):
         ],columns=["Metric","Value"])
         st.dataframe(fdf,use_container_width=True,hide_index=True)
 
-        st.subheader("đŸ§ª Backtest MAX V2")
+        st.subheader("🧪 Backtest MAX V2")
         bt=backtest(hist)
         if bt:
             b=st.columns(5)
             b[0].metric("Trades",bt['trades']); b[1].metric("Win rate",f"{bt['win_rate']*100:.1f}%"); b[2].metric("Profit factor",fmt(bt['profit_factor'])); b[3].metric("Max drawdown",f"{bt['max_drawdown']*100:.1f}%"); b[4].metric("Total return",f"{bt['total_return']*100:.1f}%")
-            st.caption("Backtest V2: vĂ o lá»‡nh á»Ÿ Open phiĂªn káº¿ tiáº¿p, cĂ³ ATR Stop/TP, tá»‘i Ä‘a 10 phiĂªn giá»¯ lá»‡nh vĂ  chi phĂ­ giáº£ Ä‘á»‹nh 0,10%/lÆ°á»£t. KhĂ´ng bao gá»“m thuáº¿/borrow fee vĂ  khĂ´ng Ä‘áº£m báº£o lá»£i nhuáº­n tÆ°Æ¡ng lai.")
-        else: st.info("KhĂ´ng Ä‘á»§ tĂ­n hiá»‡u Ä‘á»ƒ cháº¡y backtest.")
+            st.caption("Backtest V2: vào lệnh ở Open phiên kế tiếp, có ATR Stop/TP, tối đa 10 phiên giữ lệnh và chi phí giả định 0,10%/lượt. Không bao gồm thuế/borrow fee và không đảm bảo lợi nhuận tương lai.")
+        else: st.info("Không đủ tín hiệu để chạy backtest.")
 
-        st.subheader("đŸ§  MAX VIP Verdict")
+        st.subheader("🧠 MAX VIP Verdict")
         if "LONG" in bias:
-            if regime=="RISK-OFF" or risk>=70: st.warning(f"đŸŸ¢ LONG nhÆ°ng cáº§n tháº­n trá»ng â€” MAX {master}/100 â€¢ Confidence {conf}%.")
-            else: st.success(f"đŸŸ¢ LONG â€” MAX {master}/100 â€¢ Confidence {conf}%.")
-        elif "SHORT" in bias: st.error(f"đŸ”´ SHORT â€” MAX {master}/100 â€¢ Confidence {conf}%.")
-        else: st.info(f"đŸŸ¡ NEUTRAL â€” MAX {master}/100 â€¢ Confidence {conf}%.")
-        st.info("Bot chá»‰ phĂ¢n tĂ­ch dá»¯ liá»‡u. KhĂ´ng tá»± mua, bĂ¡n hoáº·c Ä‘áº·t lá»‡nh.")
+            if regime=="RISK-OFF" or risk>=70: st.warning(f"🟢 LONG nhưng cần thận trọng — MAX {master}/100 • Confidence {conf}%.")
+            else: st.success(f"🟢 LONG — MAX {master}/100 • Confidence {conf}%.")
+        elif "SHORT" in bias: st.error(f"🔴 SHORT — MAX {master}/100 • Confidence {conf}%.")
+        else: st.info(f"🟡 NEUTRAL — MAX {master}/100 • Confidence {conf}%.")
+        st.info("Bot chỉ phân tích dữ liệu. Không tự mua, bán hoặc đặt lệnh.")
     except Exception as e:
-        st.error(f"Lá»—i khi phĂ¢n tĂ­ch {ticker}: {e}")
+        st.error(f"Lỗi khi phân tích {ticker}: {e}")
